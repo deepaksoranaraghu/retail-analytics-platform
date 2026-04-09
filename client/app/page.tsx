@@ -2,6 +2,16 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { io } from "socket.io-client";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 
 type KPIData = {
   totalRevenue: string;
@@ -48,7 +58,28 @@ export default function Home() {
     };
 
     fetchData();
+
+    const socket = io("http://localhost:5001");
+
+    socket.on("new_order", (newOrder: Order) => {
+      setOrders((prev) => [newOrder, ...prev].slice(0, 10));
+    });
+
+    return () => {
+      socket.disconnect();
+    };
   }, []);
+
+  const topProductsChartData =
+    kpis?.topProducts?.map((item) => ({
+      name: item.product_name,
+      quantity: Number(item.total_quantity),
+    })) || [];
+
+  const categoryChartData = categories.map((item) => ({
+    name: item.category,
+    revenue: Number(item.revenue),
+  }));
 
   return (
     <main className="min-h-screen bg-slate-100 p-8">
@@ -78,18 +109,16 @@ export default function Home() {
             <h3 className="mb-4 text-xl font-semibold text-slate-800">
               Top Products
             </h3>
-            <div className="space-y-3">
-              {kpis?.topProducts?.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <span className="font-medium text-slate-700">
-                    {item.product_name}
-                  </span>
-                  <span className="text-slate-500">{item.total_quantity}</span>
-                </div>
-              ))}
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={topProductsChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="quantity" />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
 
@@ -97,26 +126,29 @@ export default function Home() {
             <h3 className="mb-4 text-xl font-semibold text-slate-800">
               Sales by Category
             </h3>
-            <div className="space-y-3">
-              {categories.map((item, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between rounded-lg border p-3"
-                >
-                  <span className="font-medium text-slate-700">
-                    {item.category}
-                  </span>
-                  <span className="text-slate-500">${item.revenue}</span>
-                </div>
-              ))}
+            <div className="h-72">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={categoryChartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="revenue" />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
           </div>
         </div>
 
         <div className="rounded-2xl bg-white p-6 shadow">
-          <h3 className="mb-4 text-xl font-semibold text-slate-800">
-            Recent Orders
-          </h3>
+          <div className="mb-4 flex items-center justify-between">
+            <h3 className="text-xl font-semibold text-slate-800">
+              Recent Orders
+            </h3>
+            <span className="rounded-full bg-green-100 px-3 py-1 text-sm text-green-700">
+              Live Updates
+            </span>
+          </div>
 
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse">

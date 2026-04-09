@@ -1,12 +1,23 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import http from "http";
+import { Server } from "socket.io";
 import { pool } from "./db";
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
+
+const server = http.createServer(app);
+
+const io = new Server(server, {
+  cors: {
+    origin: "http://localhost:3000",
+    methods: ["GET", "POST"],
+  },
+});
 
 app.use(cors());
 app.use(express.json());
@@ -95,6 +106,27 @@ app.get("/api/recent-orders", async (_req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+});
+
+setInterval(() => {
+  const fakeOrder = {
+    id: Date.now(),
+    order_id: `LIVE-${Math.floor(Math.random() * 10000)}`,
+    product_name: "Live Product",
+    category: "Electronics",
+    quantity: Math.floor(Math.random() * 5) + 1,
+    price: (Math.random() * 500 + 20).toFixed(2),
+    region: ["East", "West", "North", "South"][
+      Math.floor(Math.random() * 4)
+    ],
+    order_date: new Date().toISOString(),
+  };
+
+  io.emit("new_order", fakeOrder);
+}, 10000);
+
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
